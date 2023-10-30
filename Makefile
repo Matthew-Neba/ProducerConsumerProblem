@@ -4,11 +4,11 @@ testFlags = -Wall -std=c99 -g
 optFlags = -Wall -std=c99 -O
 
 
-factory: producer.c consumer.c queue.c
-	$(CC) $(CFLAGS) -o factory queue.c producer.c consumer.c
+prodcon: producer.c consumer.c queue.c mainDriver.c mainHeader.h
+	$(CC) $(CFLAGS) -o prodcon queue.c producer.c consumer.c mainDriver.c
 
-testFactory: producer.c consumer.c queue.c
-	$(CC) $(testFlags) -o testFactory queue.c producer.c consumer.c
+testProdcon: producer.c consumer.c queue.c mainDriver.c	mainHeader.h
+	$(CC) $(testFlags) -o testProdcon queue.c producer.c consumer.c	mainDriver.c
 
-optimizedFactory: producer.c consumer.c queue.c
-	$(CC) $(optFlags) -o optimizedFactory queue.c producer.c consumer.c
+optimizedProdcon: producer.c consumer.c queue.c mainDriver.c mainHeader.h
+	$(CC) $(optFlags) -o optimizedProdcon queue.c producer.c consumer.c	mainDriver.c

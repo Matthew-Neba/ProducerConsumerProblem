@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 typedef struct consumerThread {
     pthread_t thread;
@@ -11,7 +12,7 @@ typedef struct consumerThread {
     int jobsCompleted;
 } consumerThread;
 
-tydef struct producerThread {
+typedef struct producerThread {
     pthread_t thread;
     int id;
     int jobsProduced;
