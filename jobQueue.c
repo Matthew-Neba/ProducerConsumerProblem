@@ -78,7 +78,7 @@ int addJob(jobQueue *queue, int jobSize) {
         queue->isFull = true;
     }
 
-    //set boolean isEmpty
+    //set boolean isEmpty, need to do this before signaling notEmpty
     queue->isEmpty = false;
 
     //signal that queue is not empty, wake up all consumers to proceed, sinc while loop for consumers, if still full, the other consumers will go back to sleep and wait, broadcast is useful here
@@ -132,7 +132,7 @@ int removeJob(jobQueue *queue, int threadID) {
         queue->isEmpty = true;
     }
 
-    //set boolean isFull
+    //set boolean isFull, need to do this before signaling notFull
     queue->isFull = false;
 
     //signal that queue is not full
