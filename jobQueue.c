@@ -8,7 +8,6 @@ jobQueue * createJobQueue() {
     jobQueue *queue = calloc(1,sizeof(jobQueue));
 
     if (queue == NULL) {
-        perror("calloc, createJobQueue");
         return NULL;
     }
 
@@ -19,20 +18,20 @@ jobQueue * createJobQueue() {
 
     ret = pthread_mutex_init(&queue->queueMutex, NULL);
     if (ret != 0) {
-        perror("pthread_mutex_init, createJobQueue");
+        fprintf(stderr, "Error initializing mutex\n");
         return NULL;
     }
 
     ret = pthread_cond_init(&queue->notFull, NULL);
     if (ret != 0) {
-    perror("pthread_cond_init, createJobQueue");
-    return NULL;
+        fprintf(stderr, "Error initializing condition variable\n");
+        return NULL;
     } 
 
     ret = pthread_cond_init(&queue->notEmpty, NULL);
     if (ret != 0) {
-    perror("pthread_cond_init, createJobQueue");
-    return NULL;
+        fprintf(stderr, "Error initializing condition variable\n");
+        return NULL;
     } 
 
     return queue;
@@ -49,13 +48,12 @@ int addJob(jobQueue *queue, int jobSize) {
         //wait for queue to not be full, release mutex while waiting
         ret = pthread_cond_wait(&queue->notFull, &queue->queueMutex);
         if (ret != 0) {
-            perror("pthread_cond_wait, addJob");
+            fprintf(stderr, "Error waiting for queue to not be full\n");
             return -1;
         }
     }
 
     if (ret != 0) {
-        perror("pthread_mutex_lock, addJob");
         return -1;
     }
 
@@ -80,13 +78,18 @@ int addJob(jobQueue *queue, int jobSize) {
         queue->isFull = true;
     }
 
+    //set boolean isEmpty
+    queue->isEmpty = false;
+
     //signal that queue is not empty, wake up all consumers to proceed, sinc while loop for consumers, if still full, the other consumers will go back to sleep and wait, broadcast is useful here
     pthread_cond_signal(&queue->notEmpty);
+    
 
     //unlock mutex
     ret = pthread_mutex_unlock(&queue->queueMutex);
     if (ret != 0) {
-        perror("pthread_mutex_unlock, addJob");
+
+        fprintf(stderr, "Error unlocking mutex");
         return -1;
     }
  
@@ -98,7 +101,7 @@ int removeJob(jobQueue *queue, int threadID) {
     //lock queueMutex
     ret = pthread_mutex_lock(&queue->queueMutex);
     if (ret != 0) {
-        perror("pthread_mutex_lock, removeJob");
+        fprintf(stderr, "Error locking mutex");
         return -1;
     }
 
@@ -107,7 +110,6 @@ int removeJob(jobQueue *queue, int threadID) {
         //wait for queue to not be empty, release mutex while waiting
         ret = pthread_cond_wait(&queue->notEmpty, &queue->queueMutex);
         if (ret != 0) {
-            perror("pthread_cond_wait, removeJob");
             return -1;
         }
     }
@@ -130,16 +132,19 @@ int removeJob(jobQueue *queue, int threadID) {
         queue->isEmpty = true;
     }
 
+    //set boolean isFull
+    queue->isFull = false;
+
     //signal that queue is not full
     pthread_cond_signal(&queue->notFull);
 
-    //signal thread is currently processing
+    //this is to signal to main thread that the current consumer thread is currently processing
     consumers[threadID]->currentlyProcessing = true;
 
     //unlock mutex
     ret = pthread_mutex_unlock(&queue->queueMutex);
     if (ret != 0) {
-        perror("pthread_mutex_unlock, removeJob");
+        fprintf(stderr, "Error unlocking mutex\n");
         return -1;
     }
 
@@ -154,20 +159,20 @@ int destroyJobQueue(jobQueue *queue) {
     //need to destroy mutex and condition variable if not static/global
     ret = pthread_mutex_destroy(&queue->queueMutex);
     if (ret != 0) {
-    perror("pthread_mutex_destroy, destroyJobQueue");
-    return -1;
+        fprintf(stderr, "Error destroying mutex\n");
+        return -1;
    } 
 
     ret = pthread_cond_destroy(&queue->notEmpty);
     if (ret != 0) {
-    perror("pthread_cond_destroy, destroyJobQueue");
-    return -1;
+        fprintf(stderr, "Error destroying condition variable\n");
+        return -1;
    } 
 
     ret = pthread_cond_destroy(&queue->notFull);
     if (ret != 0) {
-    perror("pthread_cond_destroy, destroyJobQueue");
-    return -1;
+        fprintf(stderr, "Error destroying condition variable\n");
+        return -1;
    }
 
     jobNode * current = queue->head;

@@ -29,28 +29,53 @@ int main (int argc, char *argv[]) {
     //get start time
     startTime = getCurrentTimeInSeconds();
 
+    char * outputNum;
+
     if (argc < 3) {
-        printf("Usage: ./prodcon <number of consumers> <output file number>\n");
-        exit(0);
+        if(argc == 2) {
+            outputNum = "0";
+        } else {
+            printf("Usage: ./prodcon <number of consumers> <output file number>\n");
+            exit(0);
+        }
+        
+    } else {
+        outputNum = argv[2];
     }
 
-    //get number of consumers and filename
+    //get number of consumers
     numberConsumers = atoi(argv[1]);
     numberProducers = 1;
 
-    int lengthFileString = strlen(argv[2]) + strlen("prodcon.") + strlen(".log");
+    int lengthFileString = strlen(outputNum) + strlen("prodcon.") + strlen(".log");
     char outputFile[lengthFileString + 1];
     outputFile[0] = '\0';
 
-    sprintf(outputFile, "prodcon.%s.log", argv[2]);
+    sprintf(outputFile, "prodcon.%s.log.txt", outputNum);
 
     //open output in fileno mode
-    int output = open(outputFile, O_WRONLY | O_CREAT | O_TRUNC);
+    int output = open(outputFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (output == -1) {
+        perror("open, main");
+        exit(1);
+    }
 
     //redirect stdout to output file, but not stderr, for all threads
     ret = dup2(output, STDOUT_FILENO);
     if (ret == -1) {
         perror("dup2, main");
+        exit(1);
+    }
+
+    FILE *output_fp = fopen(outputFile, "w");
+    if (output_fp == NULL) {
+        fprintf(stderr, "Error opening output file\n");
+        exit(1);
+    }
+
+    // Redirect stdout to the output file
+    if (freopen(outputFile, "w", stdout) == NULL) {
+        fprintf(stderr, "Error redirecting stdout to output file\n");
         exit(1);
     }
 
@@ -97,7 +122,7 @@ int main (int argc, char *argv[]) {
         consumers[i]->jobsReceived = 0;
         consumers[i]->jobsCompleted = 0;
         consumers[i]->currentlyProcessing = false;
-        pthread_create(&consumers[i]->thread, NULL, consumeGoodies, &args);
+        pthread_create(&consumers[i]->thread, NULL, consumeGoodies, args);
     }
 
     //create producer threads, only one for this assignment
@@ -128,7 +153,7 @@ int main (int argc, char *argv[]) {
         args->queue = queue;
         args->id = i;
 
-        ret = pthread_create(&producers[i]->thread, NULL, produceGoodies, &args);
+        ret = pthread_create(&producers[i]->thread, NULL, produceGoodies, args);
         if(ret != 0) {
             perror("pthread_create, producer");
             exit(1);
@@ -169,7 +194,10 @@ int main (int argc, char *argv[]) {
     printf("Summary:\n");
 
     char * summaryAction;
-    int totalProducerWork, totalProducerSleep,totalConsumerAsk, totalConsumerReceive, totalConsumerComplete = 0;
+
+    int totalProducerWork, totalProducerSleep,totalConsumerAsk, totalConsumerReceive, totalConsumerComplete;
+    totalProducerWork = totalProducerSleep = totalConsumerAsk = totalConsumerReceive = totalConsumerComplete = 0;
+
 
     for (int i = 0; i < numberProducers; i++) {
         totalProducerWork += producers[i]->jobsProduced;
@@ -183,22 +211,22 @@ int main (int argc, char *argv[]) {
     }
 
     summaryAction = "Work";
-    printf("    %-10s %d\n", summaryAction, totalProducerWork);
+    printf("    %-10s   %d\n", summaryAction, totalProducerWork);
 
     summaryAction = "Sleep";
-    printf("    %-10s %d\n", summaryAction, totalProducerSleep);
+    printf("    %-10s   %d\n", summaryAction, totalProducerSleep);
 
     summaryAction = "Ask";
-    printf("    %-10s %d\n", summaryAction, totalConsumerAsk);
+    printf("    %-10s   %d\n", summaryAction, totalConsumerAsk);
 
     summaryAction = "Receive";
-    printf("    %-10s %d\n", summaryAction, totalConsumerReceive);
+    printf("    %-10s   %d\n", summaryAction, totalConsumerReceive);
 
     summaryAction = "Complete";
-    printf("    %-10s %d\n", summaryAction, totalConsumerComplete);
+    printf("    %-10s   %d\n", summaryAction, totalConsumerComplete);
 
     for (int i = 0; i < numberConsumers; i++) {
-        printf("Thread %d     %d\n", i, consumers[i]->jobsCompleted);
+        printf("    Thread %d     %d\n", i+1, consumers[i]->jobsCompleted);
     }
 
 
@@ -216,7 +244,12 @@ int main (int argc, char *argv[]) {
     free(consumers);
     free(producers);
 
-    destroyJobQueue(queue);
+    ret = destroyJobQueue(queue);
+    if (ret != 0) {
+        fprintf(stderr, "Error destroying job queue\n");
+    }
+
+    close(output);
 }
 
 
@@ -224,7 +257,10 @@ int main (int argc, char *argv[]) {
 void * consumeGoodies(void * args) {
     threadArgs * argStruct = (threadArgs *) args;
     jobQueue * queue = argStruct->queue;
+
+    //add one to id to get index
     int id = argStruct->id;
+    int index = id + 1;
     
     double elapsed = 0;
     int ret = 0;
@@ -246,7 +282,7 @@ void * consumeGoodies(void * args) {
 
         action = "Ask";
         //print ask time
-        printf("%.3f ID= %3d       %-10s\n", elapsed, id, action);
+        printf("%.3f ID= %3d        %-10s\n", elapsed, index, action);
 
         //release File IOlock
         ret = pthread_mutex_unlock(&IOlock);
@@ -287,7 +323,7 @@ void * consumeGoodies(void * args) {
         }
 
         action = "Received";
-        printf("%.3f ID= %3d Q= %3d %-10s %d\n", elapsed, id, Q, action, jobTime);
+        printf("%.3f ID= %3d Q= %3d %-10s %d\n", elapsed, index, Q, action, jobTime);
 
         //release File IOlock
         ret = pthread_mutex_unlock(&IOlock);
@@ -324,7 +360,7 @@ void * consumeGoodies(void * args) {
 
         action = "Complete";
 
-        printf("%.3f ID= %3d Q= %3d %-10s %d\n", elapsed, id, Q, action, jobTime);
+        printf("%.3f ID= %3d Q= %3d %-10s %d\n", elapsed, index, Q, action, jobTime);
 
         //release File IOlock
         ret = pthread_mutex_unlock(&IOlock);
@@ -348,6 +384,8 @@ void * consumeGoodies(void * args) {
 void * produceGoodies(void * args) {
     threadArgs * argStruct = (threadArgs *) args;
     jobQueue * queue = argStruct->queue;
+
+    //add one to id to get index
     int id = argStruct->id;
     
     double elapsed = 0;

@@ -1,0 +1,27 @@
+Use:
+-The input file shoud be a list of Tasks T<n> and S<n> seperate by whitespace chharacters. T<n> specifies that a consumer thread runs a job for time <n>. T<n> is used to simulate some random work. S<n> specifies a producer thread sleeps for time <n>. S<n> simulates a producer taking a break.
+
+-view makefile to make the program
+
+-program is run like: ./prodCon <numberConsumers> <numberProducers> <logFileNumber> < inputFile
+
+-In the summary, Q represents tasks received but not yet completed
+
+
+Notes:
+-The Log File contains the operations of the threads out of order, this is intentionaly. This occurs because another thread might obtain the IO lock and write to the file before a thread
+
+-Expect an error destroying the job queue, due to the implementation, the consumers threads are constantly running and therefore even if the queue is empty, the consumer threads will be waiting for some condition variable or some mutex. Due ot this, cannot cancel these threads, not an issue, is exit() is called, the entire process including its threads are cancelled. However, this may be unsafe if OS is dodgy. Can fix later if time permits
+
+
+TODO:
+-Some cleanup left to do, need to work on freeing the arguments passed to each thread and destroying the queue mutex as described above. not a perfect valgrind score. Program is functional as long as OS is responsible.
+
+-Can also work on improving performance. The main thread is in a busy while loop checking is there is anything thing in the job queue and if all the threads are done their job. Can implement some blocking mechanism to save CPU time
+
+-Optimized version does not work due to reason mentioned above. Work on fixing that.
+
+-Can also impletment fine grain control on the jobQueue using a mutex/semaphore for each spot in queue. This will improve performance. Can do later
+
+-Can allow multiple producers, logic mostly implemented already, only modifications that need to be done is in the beginning of the mainDriver execution and with the management of the program arguments, might also modify program summary to reflect the various producers
+
