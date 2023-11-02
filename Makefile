@@ -1,14 +1,19 @@
 CC = gcc
-CFLAGS = -Wall -std=c99
-testFlags = -Wall -std=c99 -g
-optFlags = -Wall -std=c99 -O
+CFLAGS = -Wall -std=gnu11
+testFlags = -Wall -std=gnu11 -g
+optFlags = -Wall -std=gnu11 -O
 
 
-prodcon: producer.c consumer.c queue.c mainDriver.c mainHeader.h
-	$(CC) $(CFLAGS) -o prodcon queue.c producer.c consumer.c mainDriver.c
+# if a target dependencies are other targets, then make those targets first
+# if a target dependencies are files, then make sure those files exist and are up to date
+# need to link pthread library since it is not a standard library
 
-testProdcon: producer.c consumer.c queue.c mainDriver.c	mainHeader.h
-	$(CC) $(testFlags) -o testProdcon queue.c producer.c consumer.c	mainDriver.c
 
-optimizedProdcon: producer.c consumer.c queue.c mainDriver.c mainHeader.h
-	$(CC) $(optFlags) -o optimizedProdcon queue.c producer.c consumer.c	mainDriver.c
+testProdcon:  mainDriver.c mainHeader.h jobQueue.c
+	$(CC) $(testFlags) -o testProdcon mainDriver.c jobQueue.c jobFunctions.c -pthread
+	
+prodcon:  mainDriver.c mainHeader.h jobQueue.c
+	$(CC) $(CFLAGS) -o prodcon mainDriver.c jobQueue.c jobFunctions.c -pthread
+
+optimizedProdcon: mainDriver.c mainHeader.h jobQueue.c
+	$(CC) $(optFlags) -o optimizedProdcon mainDriver.c jobQueue.c jobFunctions.c -pthread
